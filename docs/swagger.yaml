@@ -1,0 +1,979 @@
+basePath: /
+definitions:
+  handler.HealthResponse:
+    properties:
+      status:
+        type: string
+      time:
+        type: string
+    type: object
+  model.AsaasBillingType:
+    enum:
+    - BOLETO
+    - CREDIT_CARD
+    - PIX
+    - UNDEFINED
+    type: string
+    x-enum-varnames:
+    - AsaasBillingTypeBoleto
+    - AsaasBillingTypeCreditCard
+    - AsaasBillingTypePix
+    - AsaasBillingTypeUndefined
+  model.AsaasChargeDiscount:
+    properties:
+      dueDateLimitDays:
+        type: integer
+      type:
+        allOf:
+        - $ref: '#/definitions/model.AsaasDiscountType'
+        description: FIXED | PERCENTAGE
+      value:
+        type: number
+    type: object
+  model.AsaasChargeFine:
+    properties:
+      type:
+        allOf:
+        - $ref: '#/definitions/model.AsaasFineType'
+        description: FIXED | PERCENTAGE
+      value:
+        type: number
+    type: object
+  model.AsaasChargeInterest:
+    properties:
+      value:
+        type: number
+    type: object
+  model.AsaasCreateChargeRequest:
+    properties:
+      billingType:
+        allOf:
+        - $ref: '#/definitions/model.AsaasBillingType'
+        description: BOLETO | CREDIT_CARD | PIX | UNDEFINED
+      daysAfterDueDateToRegistrationCancellation:
+        description: boleto only
+        type: integer
+      description:
+        type: string
+      discount:
+        $ref: '#/definitions/model.AsaasChargeDiscount'
+      dueDate:
+        description: YYYY-MM-DD
+        type: string
+      externalReference:
+        type: string
+      fine:
+        $ref: '#/definitions/model.AsaasChargeFine'
+      installmentCount:
+        type: integer
+      installmentValue:
+        type: number
+      interest:
+        $ref: '#/definitions/model.AsaasChargeInterest'
+      postalService:
+        type: boolean
+      totalValue:
+        type: number
+      value:
+        type: number
+    type: object
+  model.AsaasCreateCustomerRequest:
+    properties:
+      company:
+        type: boolean
+      cpfCnpj:
+        type: string
+      email:
+        type: string
+      mobilePhone:
+        type: string
+      name:
+        type: string
+      notificationDisabled:
+        type: boolean
+    type: object
+  model.AsaasCustomerResponse:
+    properties:
+      additionalEmails:
+        type: string
+      address:
+        type: string
+      addressNumber:
+        type: string
+      city:
+        type: integer
+      cityName:
+        type: string
+      complement:
+        type: string
+      country:
+        type: string
+      cpfCnpj:
+        type: string
+      dateCreated:
+        type: string
+      deleted:
+        type: boolean
+      email:
+        type: string
+      externalReference:
+        type: string
+      foreignCustomer:
+        type: boolean
+      id:
+        type: string
+      mobilePhone:
+        type: string
+      name:
+        type: string
+      notificationDisabled:
+        type: boolean
+      object:
+        type: string
+      observations:
+        type: string
+      personType:
+        description: JURIDICA | FISICA
+        type: string
+      phone:
+        type: string
+      postalCode:
+        type: string
+      province:
+        type: string
+      state:
+        type: string
+    type: object
+  model.AsaasDiscountType:
+    enum:
+    - FIXED
+    - PERCENTAGE
+    type: string
+    x-enum-varnames:
+    - AsaasDiscountTypeFixed
+    - AsaasDiscountTypePercentage
+  model.AsaasFineType:
+    enum:
+    - FIXED
+    - PERCENTAGE
+    type: string
+    x-enum-varnames:
+    - AsaasFineTypeFixed
+    - AsaasFineTypePercentage
+  model.AsaasPaymentResponse:
+    properties:
+      anticipable:
+        type: boolean
+      anticipated:
+        type: boolean
+      bankSlipUrl:
+        type: string
+      billingType:
+        type: string
+      canBePaidAfterDueDate:
+        type: boolean
+      checkoutSession: {}
+      clientPaymentDate:
+        type: string
+      confirmedDate:
+        type: string
+      creditDate:
+        type: string
+      customer:
+        type: string
+      dateCreated:
+        type: string
+      deleted:
+        type: boolean
+      description:
+        type: string
+      discount: {}
+      dueDate:
+        type: string
+      escrow: {}
+      estimatedCreditDate:
+        type: string
+      externalReference:
+        type: string
+      fine: {}
+      id:
+        type: string
+      installment:
+        type: string
+      installmentNumber:
+        type: integer
+      interest: {}
+      interestValue: {}
+      invoiceNumber:
+        type: string
+      invoiceUrl:
+        type: string
+      lastBankSlipViewedDate: {}
+      lastInvoiceViewedDate: {}
+      netValue:
+        type: number
+      nossoNumero:
+        type: string
+      object:
+        type: string
+      originalDueDate:
+        type: string
+      originalValue: {}
+      paymentDate:
+        type: string
+      paymentLink:
+        description: duplicated field name workaround
+        type: string
+      pixTransaction: {}
+      postalService:
+        type: boolean
+      refunds: {}
+      status:
+        type: string
+      transactionReceiptUrl:
+        type: string
+      value:
+        type: number
+    type: object
+  model.AsaasPaymentsListResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/model.AsaasPaymentResponse'
+        type: array
+      hasMore:
+        type: boolean
+      limit:
+        type: integer
+      object:
+        description: '"list"'
+        type: string
+      offset:
+        type: integer
+      totalCount:
+        type: integer
+    type: object
+  model.AsaasPersonType:
+    enum:
+    - JURIDICA
+    - FISICA
+    type: string
+    x-enum-varnames:
+    - AsaasPersonTypeJuridica
+    - AsaasPersonTypeFisica
+  model.AsaasUpdateCustomerRequest:
+    properties:
+      additionalEmails:
+        description: Metadados
+        type: string
+      address:
+        description: Endereço
+        type: string
+      addressNumber:
+        type: string
+      city:
+        type: integer
+      company:
+        type: boolean
+      complement:
+        type: string
+      country:
+        type: string
+      cpfCnpj:
+        type: string
+      email:
+        type: string
+      externalReference:
+        type: string
+      foreignCustomer:
+        type: boolean
+      mobilePhone:
+        type: string
+      name:
+        description: Identificação
+        type: string
+      notificationDisabled:
+        description: Use pointers for booleans so "omit vs false" is preserved.
+        type: boolean
+      observations:
+        type: string
+      personType:
+        allOf:
+        - $ref: '#/definitions/model.AsaasPersonType'
+        description: Flags / enums
+      phone:
+        type: string
+      postalCode:
+        type: string
+      province:
+        type: string
+      state:
+        type: string
+    type: object
+  model.AsaasWebhookAccount:
+    properties:
+      id:
+        type: string
+      ownerId:
+        type: string
+    type: object
+  model.AsaasWebhookEvent:
+    properties:
+      account:
+        $ref: '#/definitions/model.AsaasWebhookAccount'
+      dateCreated:
+        description: 'Format: "2026-01-24 16:13:02"'
+        type: string
+      event:
+        description: e.g., PAYMENT_CREATED, PAYMENT_RECEIVED, PAYMENT_UPDATED, etc.
+        type: string
+      id:
+        type: string
+      payment:
+        allOf:
+        - $ref: '#/definitions/model.AsaasPaymentResponse'
+        description: The payment object (when event is payment-related)
+    type: object
+host: localhost:8083
+info:
+  contact: {}
+  description: Microservice para gestão de cobranças (inicialmente integração Asaas;
+    no futuro bancos diversos).
+  title: Charges Service
+  version: 0.1.0
+paths:
+  /asaas/feecharges:
+    post:
+      consumes:
+      - application/json
+      description: Endpoint para receber notificações de atualização de status de
+        cobranças do Asaas
+      parameters:
+      - description: Token de acesso configurado no webhook do Asaas
+        in: header
+        name: asaas-access-token
+        type: string
+      - description: Evento do webhook
+        in: body
+        name: event
+        required: true
+        schema:
+          $ref: '#/definitions/model.AsaasWebhookEvent'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Evento recebido com sucesso
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: JSON inválido
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Não autorizado
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Erro interno
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Recebe eventos do Asaas via webhook
+      tags:
+      - Webhook
+  /health:
+    get:
+      description: Check the health of the service
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.HealthResponse'
+      summary: Health check
+      tags:
+      - status
+  /v1/asaas/charges:
+    get:
+      consumes:
+      - application/json
+      description: Lista cobranças (payments) do Asaas com filtros. Se company_id
+        for informado e customer não, o serviço resolve o customer_id do Asaas via
+        mapeamento (RPC em public) e aplica o filtro customer automaticamente.
+      parameters:
+      - description: ID do accounting_office (UUID)
+        in: query
+        name: accounting_office_id
+        required: true
+        type: string
+      - description: ID da empresa (UUID) - resolve customer automaticamente
+        in: query
+        name: company_id
+        type: string
+      - description: Elemento inicial da lista
+        in: query
+        name: offset
+        type: integer
+      - description: 'Número de elementos da lista (max: 100)'
+        in: query
+        name: limit
+        type: integer
+      - description: Filtrar pelo Identificador único do cliente no Asaas
+        in: query
+        name: customer
+        type: string
+      - description: Filtrar pelo nome do grupo de cliente
+        in: query
+        name: customerGroupName
+        type: string
+      - description: Filtrar por forma de pagamento
+        enum:
+        - UNDEFINED
+        - BOLETO
+        - CREDIT_CARD
+        - PIX
+        in: query
+        name: billingType
+        type: string
+      - description: Filtrar por status
+        enum:
+        - PENDING
+        - RECEIVED
+        - CONFIRMED
+        - OVERDUE
+        - REFUNDED
+        - RECEIVED_IN_CASH
+        - REFUND_REQUESTED
+        - REFUND_IN_PROGRESS
+        - CHARGEBACK_REQUESTED
+        - CHARGEBACK_DISPUTE
+        - AWAITING_CHARGEBACK_REVERSAL
+        - DUNNING_REQUESTED
+        - DUNNING_RECEIVED
+        - AWAITING_RISK_ANALYSIS
+        in: query
+        name: status
+        type: string
+      - description: Filtrar pelo Identificador único da assinatura
+        in: query
+        name: subscription
+        type: string
+      - description: Filtrar pelo Identificador único do parcelamento
+        in: query
+        name: installment
+        type: string
+      - description: Filtrar pelo identificador do seu sistema
+        in: query
+        name: externalReference
+        type: string
+      - description: Filtrar pela data de pagamento
+        in: query
+        name: paymentDate
+        type: string
+      - description: Filtro para cobranças que possuam ou não nota fiscal
+        enum:
+        - SCHEDULED
+        - AUTHORIZED
+        - PROCESSING_CANCELLATION
+        - CANCELED
+        - CANCELLATION_DENIED
+        - ERROR
+        in: query
+        name: invoiceStatus
+        type: string
+      - description: Filtrar pela data estimada de crédito
+        in: query
+        name: estimatedCreditDate
+        type: string
+      - description: Filtrar recebimentos originados de um QrCode estático utilizando
+          o id
+        in: query
+        name: pixQrCodeId
+        type: string
+      - description: Filtrar registros antecipados ou não
+        in: query
+        name: anticipated
+        type: boolean
+      - description: Filtrar registros antecipáveis ou não
+        in: query
+        name: anticipable
+        type: boolean
+      - description: Filtrar a partir da data de criação inicial
+        in: query
+        name: dateCreated[ge]
+        type: string
+      - description: Filtrar até a data de criação final
+        in: query
+        name: dateCreated[le]
+        type: string
+      - description: Filtrar a partir da data de recebimento inicial
+        in: query
+        name: paymentDate[ge]
+        type: string
+      - description: Filtrar até a data de recebimento final
+        in: query
+        name: paymentDate[le]
+        type: string
+      - description: Filtrar a partir da data estimada de crédito inicial
+        in: query
+        name: estimatedCreditDate[ge]
+        type: string
+      - description: Filtrar até a data estimada de crédito final
+        in: query
+        name: estimatedCreditDate[le]
+        type: string
+      - description: Filtrar a partir da data de vencimento inicial
+        in: query
+        name: dueDate[ge]
+        type: string
+      - description: Filtrar até a data de vencimento final
+        in: query
+        name: dueDate[le]
+        type: string
+      - description: Filtrar pelo endereço de e-mail do usuário que criou a cobrança
+        in: query
+        name: user
+        type: string
+      - description: Filtrar pelo identificador único da checkout
+        in: query
+        name: checkoutSession
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.AsaasPaymentsListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "502":
+          description: Bad Gateway
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Listar cobranças no Asaas (paginado)
+      tags:
+      - asaas
+    post:
+      consumes:
+      - application/json
+      description: Cria uma cobrança (payment) no Asaas para uma empresa (company_id).
+        O serviço resolve o customer_id no Asaas via mapeamento em company.asaas_integration
+        (RPC em public) e usa a integração ativa (is_active=true) do escritório (accounting_office_id)
+        em iam.billing_integrations.
+      parameters:
+      - description: ID do accounting_office (UUID)
+        in: query
+        name: accounting_office_id
+        required: true
+        type: string
+      - description: ID da empresa (company_id, UUID)
+        in: query
+        name: company_id
+        required: true
+        type: string
+      - description: ID do contrato (UUID)
+        in: query
+        name: contract_id
+        required: true
+        type: string
+      - description: Payload da cobrança
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.AsaasCreateChargeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.AsaasPaymentResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "502":
+          description: Bad Gateway
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Criar cobrança no Asaas
+      tags:
+      - asaas
+  /v1/asaas/charges/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Exclui uma cobrança (payment) do Asaas e remove do banco de dados
+        iam.charges
+      parameters:
+      - description: ID da cobrança no Asaas (pay_xxx)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: ID do escritório contábil
+        in: query
+        name: accounting_office_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Cobrança excluída com sucesso
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Requisição inválida
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Cobrança não encontrada
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Erro interno do servidor
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Excluir cobrança do Asaas
+      tags:
+      - Asaas Charges
+  /v1/asaas/charges/{id}/digitable-line:
+    get:
+      description: Retorna a linha digitável (identificationField) para uma cobrança
+        no Asaas.
+      parameters:
+      - description: ID do accounting_office (UUID)
+        in: query
+        name: accounting_office_id
+        required: true
+        type: string
+      - description: ID da cobrança no Asaas (payment id)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "502":
+          description: Bad Gateway
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Linha digitável do boleto (Asaas)
+      tags:
+      - asaas
+  /v1/asaas/charges/{id}/pix-qrcode:
+    get:
+      description: Retorna o QRCode Pix (encodedImage/payload) para uma cobrança no
+        Asaas.
+      parameters:
+      - description: ID do accounting_office (UUID)
+        in: query
+        name: accounting_office_id
+        required: true
+        type: string
+      - description: ID da cobrança no Asaas (payment id)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "502":
+          description: Bad Gateway
+          schema:
+            additionalProperties: true
+            type: object
+      summary: QRCode Pix (Asaas)
+      tags:
+      - asaas
+  /v1/asaas/customers:
+    post:
+      consumes:
+      - application/json
+      description: Cria um cliente no Asaas usando a integração ativa (is_active=true)
+        do escritório (accounting_office_id) cadastrada no Supabase (iam.billing_integrations).
+        Quando existir mais de uma integração ativa, o serviço prioriza is_default=true
+        e depois a mais recente.
+      parameters:
+      - description: ID do accounting_office (UUID)
+        in: query
+        name: accounting_office_id
+        required: true
+        type: string
+      - description: ID da empresa (company_id, UUID)
+        in: query
+        name: company_id
+        required: true
+        type: string
+      - description: Payload (campos mínimos)
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.AsaasCreateCustomerRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.AsaasCustomerResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "502":
+          description: Bad Gateway
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Criar novo cliente no Asaas
+      tags:
+      - asaas
+  /v1/asaas/customers/{id}:
+    get:
+      consumes:
+      - application/json
+      description: 'Recupera um cliente no Asaas pelo ID (Asaas customer id), usando
+        a integração ativa (is_active=true) do escritório (accounting_office_id) cadastrada
+        no Supabase (iam.billing_integrations). Referência Asaas: https://docs.asaas.com/reference/recuperar-um-unico-cliente'
+      parameters:
+      - description: ID do accounting_office (UUID)
+        in: query
+        name: accounting_office_id
+        required: true
+        type: string
+      - description: ID do cliente no Asaas
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.AsaasCustomerResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "502":
+          description: Bad Gateway
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Recuperar um único cliente no Asaas
+      tags:
+      - asaas
+    put:
+      consumes:
+      - application/json
+      description: 'Atualiza um cliente existente no Asaas pelo ID (Asaas customer
+        id), usando a integração ativa (is_active=true) do escritório (accounting_office_id)
+        cadastrada no Supabase (iam.billing_integrations). Referência Asaas: https://docs.asaas.com/reference/atualizar-cliente-existente'
+      parameters:
+      - description: ID do accounting_office (UUID)
+        in: query
+        name: accounting_office_id
+        required: true
+        type: string
+      - description: ID do cliente no Asaas
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Campos para atualização (parcial)
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.AsaasUpdateCustomerRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.AsaasCustomerResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "502":
+          description: Bad Gateway
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Atualizar cliente existente no Asaas
+      tags:
+      - asaas
+  /v1/asaas/customers/by-company:
+    get:
+      consumes:
+      - application/json
+      description: 'Recupera o customer do Asaas usando o mapeamento salvo em company.asaas_integration
+        (via RPC em public), e então consulta o Asaas. Útil porque o front normalmente
+        tem company_id. Referência Asaas: https://docs.asaas.com/reference/recuperar-um-unico-cliente'
+      parameters:
+      - description: ID do accounting_office (UUID)
+        in: query
+        name: accounting_office_id
+        required: true
+        type: string
+      - description: ID da empresa (company_id, UUID)
+        in: query
+        name: company_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.AsaasCustomerResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "502":
+          description: Bad Gateway
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Recuperar cliente no Asaas por company_id (mapeamento interno)
+      tags:
+      - asaas
+    put:
+      consumes:
+      - application/json
+      description: 'Resolve o customer id do Asaas via company.asaas_integration (RPC
+        em public) e atualiza o cliente no Asaas. Referência Asaas: https://docs.asaas.com/reference/atualizar-cliente-existente'
+      parameters:
+      - description: ID do accounting_office (UUID)
+        in: query
+        name: accounting_office_id
+        required: true
+        type: string
+      - description: ID da empresa (company_id, UUID)
+        in: query
+        name: company_id
+        required: true
+        type: string
+      - description: Campos para atualização (parcial)
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.AsaasUpdateCustomerRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.AsaasCustomerResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "502":
+          description: Bad Gateway
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Atualizar cliente existente no Asaas por company_id (mapeamento interno)
+      tags:
+      - asaas
+swagger: "2.0"

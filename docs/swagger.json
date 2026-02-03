@@ -1,0 +1,1407 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "Microservice para gestão de cobranças (inicialmente integração Asaas; no futuro bancos diversos).",
+        "title": "Charges Service",
+        "contact": {},
+        "version": "0.1.0"
+    },
+    "host": "localhost:8083",
+    "basePath": "/",
+    "paths": {
+        "/asaas/feecharges": {
+            "post": {
+                "description": "Endpoint para receber notificações de atualização de status de cobranças do Asaas",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Webhook"
+                ],
+                "summary": "Recebe eventos do Asaas via webhook",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Token de acesso configurado no webhook do Asaas",
+                        "name": "asaas-access-token",
+                        "in": "header"
+                    },
+                    {
+                        "description": "Evento do webhook",
+                        "name": "event",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.AsaasWebhookEvent"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Evento recebido com sucesso",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "JSON inválido",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Não autorizado",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "description": "Check the health of the service",
+                "tags": [
+                    "status"
+                ],
+                "summary": "Health check",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.HealthResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/asaas/charges": {
+            "get": {
+                "description": "Lista cobranças (payments) do Asaas com filtros. Se company_id for informado e customer não, o serviço resolve o customer_id do Asaas via mapeamento (RPC em public) e aplica o filtro customer automaticamente.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "asaas"
+                ],
+                "summary": "Listar cobranças no Asaas (paginado)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID do accounting_office (UUID)",
+                        "name": "accounting_office_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID da empresa (UUID) - resolve customer automaticamente",
+                        "name": "company_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Elemento inicial da lista",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Número de elementos da lista (max: 100)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filtrar pelo Identificador único do cliente no Asaas",
+                        "name": "customer",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filtrar pelo nome do grupo de cliente",
+                        "name": "customerGroupName",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "UNDEFINED",
+                            "BOLETO",
+                            "CREDIT_CARD",
+                            "PIX"
+                        ],
+                        "type": "string",
+                        "description": "Filtrar por forma de pagamento",
+                        "name": "billingType",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "PENDING",
+                            "RECEIVED",
+                            "CONFIRMED",
+                            "OVERDUE",
+                            "REFUNDED",
+                            "RECEIVED_IN_CASH",
+                            "REFUND_REQUESTED",
+                            "REFUND_IN_PROGRESS",
+                            "CHARGEBACK_REQUESTED",
+                            "CHARGEBACK_DISPUTE",
+                            "AWAITING_CHARGEBACK_REVERSAL",
+                            "DUNNING_REQUESTED",
+                            "DUNNING_RECEIVED",
+                            "AWAITING_RISK_ANALYSIS"
+                        ],
+                        "type": "string",
+                        "description": "Filtrar por status",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filtrar pelo Identificador único da assinatura",
+                        "name": "subscription",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filtrar pelo Identificador único do parcelamento",
+                        "name": "installment",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filtrar pelo identificador do seu sistema",
+                        "name": "externalReference",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filtrar pela data de pagamento",
+                        "name": "paymentDate",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "SCHEDULED",
+                            "AUTHORIZED",
+                            "PROCESSING_CANCELLATION",
+                            "CANCELED",
+                            "CANCELLATION_DENIED",
+                            "ERROR"
+                        ],
+                        "type": "string",
+                        "description": "Filtro para cobranças que possuam ou não nota fiscal",
+                        "name": "invoiceStatus",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filtrar pela data estimada de crédito",
+                        "name": "estimatedCreditDate",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filtrar recebimentos originados de um QrCode estático utilizando o id",
+                        "name": "pixQrCodeId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filtrar registros antecipados ou não",
+                        "name": "anticipated",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filtrar registros antecipáveis ou não",
+                        "name": "anticipable",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filtrar a partir da data de criação inicial",
+                        "name": "dateCreated[ge]",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filtrar até a data de criação final",
+                        "name": "dateCreated[le]",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filtrar a partir da data de recebimento inicial",
+                        "name": "paymentDate[ge]",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filtrar até a data de recebimento final",
+                        "name": "paymentDate[le]",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filtrar a partir da data estimada de crédito inicial",
+                        "name": "estimatedCreditDate[ge]",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filtrar até a data estimada de crédito final",
+                        "name": "estimatedCreditDate[le]",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filtrar a partir da data de vencimento inicial",
+                        "name": "dueDate[ge]",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filtrar até a data de vencimento final",
+                        "name": "dueDate[le]",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filtrar pelo endereço de e-mail do usuário que criou a cobrança",
+                        "name": "user",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filtrar pelo identificador único da checkout",
+                        "name": "checkoutSession",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.AsaasPaymentsListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Cria uma cobrança (payment) no Asaas para uma empresa (company_id). O serviço resolve o customer_id no Asaas via mapeamento em company.asaas_integration (RPC em public) e usa a integração ativa (is_active=true) do escritório (accounting_office_id) em iam.billing_integrations.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "asaas"
+                ],
+                "summary": "Criar cobrança no Asaas",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID do accounting_office (UUID)",
+                        "name": "accounting_office_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID da empresa (company_id, UUID)",
+                        "name": "company_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID do contrato (UUID)",
+                        "name": "contract_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "description": "Payload da cobrança",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.AsaasCreateChargeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.AsaasPaymentResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/asaas/charges/{id}": {
+            "delete": {
+                "description": "Exclui uma cobrança (payment) do Asaas e remove do banco de dados iam.charges",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Asaas Charges"
+                ],
+                "summary": "Excluir cobrança do Asaas",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID da cobrança no Asaas (pay_xxx)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID do escritório contábil",
+                        "name": "accounting_office_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cobrança excluída com sucesso",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Requisição inválida",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Cobrança não encontrada",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno do servidor",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/asaas/charges/{id}/digitable-line": {
+            "get": {
+                "description": "Retorna a linha digitável (identificationField) para uma cobrança no Asaas.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "asaas"
+                ],
+                "summary": "Linha digitável do boleto (Asaas)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID do accounting_office (UUID)",
+                        "name": "accounting_office_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID da cobrança no Asaas (payment id)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/asaas/charges/{id}/pix-qrcode": {
+            "get": {
+                "description": "Retorna o QRCode Pix (encodedImage/payload) para uma cobrança no Asaas.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "asaas"
+                ],
+                "summary": "QRCode Pix (Asaas)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID do accounting_office (UUID)",
+                        "name": "accounting_office_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID da cobrança no Asaas (payment id)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/asaas/customers": {
+            "post": {
+                "description": "Cria um cliente no Asaas usando a integração ativa (is_active=true) do escritório (accounting_office_id) cadastrada no Supabase (iam.billing_integrations). Quando existir mais de uma integração ativa, o serviço prioriza is_default=true e depois a mais recente.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "asaas"
+                ],
+                "summary": "Criar novo cliente no Asaas",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID do accounting_office (UUID)",
+                        "name": "accounting_office_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID da empresa (company_id, UUID)",
+                        "name": "company_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "description": "Payload (campos mínimos)",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.AsaasCreateCustomerRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.AsaasCustomerResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/asaas/customers/by-company": {
+            "get": {
+                "description": "Recupera o customer do Asaas usando o mapeamento salvo em company.asaas_integration (via RPC em public), e então consulta o Asaas. Útil porque o front normalmente tem company_id. Referência Asaas: https://docs.asaas.com/reference/recuperar-um-unico-cliente",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "asaas"
+                ],
+                "summary": "Recuperar cliente no Asaas por company_id (mapeamento interno)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID do accounting_office (UUID)",
+                        "name": "accounting_office_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID da empresa (company_id, UUID)",
+                        "name": "company_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.AsaasCustomerResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Resolve o customer id do Asaas via company.asaas_integration (RPC em public) e atualiza o cliente no Asaas. Referência Asaas: https://docs.asaas.com/reference/atualizar-cliente-existente",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "asaas"
+                ],
+                "summary": "Atualizar cliente existente no Asaas por company_id (mapeamento interno)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID do accounting_office (UUID)",
+                        "name": "accounting_office_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID da empresa (company_id, UUID)",
+                        "name": "company_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "description": "Campos para atualização (parcial)",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.AsaasUpdateCustomerRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.AsaasCustomerResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/asaas/customers/{id}": {
+            "get": {
+                "description": "Recupera um cliente no Asaas pelo ID (Asaas customer id), usando a integração ativa (is_active=true) do escritório (accounting_office_id) cadastrada no Supabase (iam.billing_integrations). Referência Asaas: https://docs.asaas.com/reference/recuperar-um-unico-cliente",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "asaas"
+                ],
+                "summary": "Recuperar um único cliente no Asaas",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID do accounting_office (UUID)",
+                        "name": "accounting_office_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID do cliente no Asaas",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.AsaasCustomerResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Atualiza um cliente existente no Asaas pelo ID (Asaas customer id), usando a integração ativa (is_active=true) do escritório (accounting_office_id) cadastrada no Supabase (iam.billing_integrations). Referência Asaas: https://docs.asaas.com/reference/atualizar-cliente-existente",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "asaas"
+                ],
+                "summary": "Atualizar cliente existente no Asaas",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID do accounting_office (UUID)",
+                        "name": "accounting_office_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID do cliente no Asaas",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Campos para atualização (parcial)",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.AsaasUpdateCustomerRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.AsaasCustomerResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "handler.HealthResponse": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string"
+                },
+                "time": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.AsaasBillingType": {
+            "type": "string",
+            "enum": [
+                "BOLETO",
+                "CREDIT_CARD",
+                "PIX",
+                "UNDEFINED"
+            ],
+            "x-enum-varnames": [
+                "AsaasBillingTypeBoleto",
+                "AsaasBillingTypeCreditCard",
+                "AsaasBillingTypePix",
+                "AsaasBillingTypeUndefined"
+            ]
+        },
+        "model.AsaasChargeDiscount": {
+            "type": "object",
+            "properties": {
+                "dueDateLimitDays": {
+                    "type": "integer"
+                },
+                "type": {
+                    "description": "FIXED | PERCENTAGE",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.AsaasDiscountType"
+                        }
+                    ]
+                },
+                "value": {
+                    "type": "number"
+                }
+            }
+        },
+        "model.AsaasChargeFine": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "description": "FIXED | PERCENTAGE",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.AsaasFineType"
+                        }
+                    ]
+                },
+                "value": {
+                    "type": "number"
+                }
+            }
+        },
+        "model.AsaasChargeInterest": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "number"
+                }
+            }
+        },
+        "model.AsaasCreateChargeRequest": {
+            "type": "object",
+            "properties": {
+                "billingType": {
+                    "description": "BOLETO | CREDIT_CARD | PIX | UNDEFINED",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.AsaasBillingType"
+                        }
+                    ]
+                },
+                "daysAfterDueDateToRegistrationCancellation": {
+                    "description": "boleto only",
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "discount": {
+                    "$ref": "#/definitions/model.AsaasChargeDiscount"
+                },
+                "dueDate": {
+                    "description": "YYYY-MM-DD",
+                    "type": "string"
+                },
+                "externalReference": {
+                    "type": "string"
+                },
+                "fine": {
+                    "$ref": "#/definitions/model.AsaasChargeFine"
+                },
+                "installmentCount": {
+                    "type": "integer"
+                },
+                "installmentValue": {
+                    "type": "number"
+                },
+                "interest": {
+                    "$ref": "#/definitions/model.AsaasChargeInterest"
+                },
+                "postalService": {
+                    "type": "boolean"
+                },
+                "totalValue": {
+                    "type": "number"
+                },
+                "value": {
+                    "type": "number"
+                }
+            }
+        },
+        "model.AsaasCreateCustomerRequest": {
+            "type": "object",
+            "properties": {
+                "company": {
+                    "type": "boolean"
+                },
+                "cpfCnpj": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "mobilePhone": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "notificationDisabled": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "model.AsaasCustomerResponse": {
+            "type": "object",
+            "properties": {
+                "additionalEmails": {
+                    "type": "string"
+                },
+                "address": {
+                    "type": "string"
+                },
+                "addressNumber": {
+                    "type": "string"
+                },
+                "city": {
+                    "type": "integer"
+                },
+                "cityName": {
+                    "type": "string"
+                },
+                "complement": {
+                    "type": "string"
+                },
+                "country": {
+                    "type": "string"
+                },
+                "cpfCnpj": {
+                    "type": "string"
+                },
+                "dateCreated": {
+                    "type": "string"
+                },
+                "deleted": {
+                    "type": "boolean"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "externalReference": {
+                    "type": "string"
+                },
+                "foreignCustomer": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "mobilePhone": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "notificationDisabled": {
+                    "type": "boolean"
+                },
+                "object": {
+                    "type": "string"
+                },
+                "observations": {
+                    "type": "string"
+                },
+                "personType": {
+                    "description": "JURIDICA | FISICA",
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "postalCode": {
+                    "type": "string"
+                },
+                "province": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.AsaasDiscountType": {
+            "type": "string",
+            "enum": [
+                "FIXED",
+                "PERCENTAGE"
+            ],
+            "x-enum-varnames": [
+                "AsaasDiscountTypeFixed",
+                "AsaasDiscountTypePercentage"
+            ]
+        },
+        "model.AsaasFineType": {
+            "type": "string",
+            "enum": [
+                "FIXED",
+                "PERCENTAGE"
+            ],
+            "x-enum-varnames": [
+                "AsaasFineTypeFixed",
+                "AsaasFineTypePercentage"
+            ]
+        },
+        "model.AsaasPaymentResponse": {
+            "type": "object",
+            "properties": {
+                "anticipable": {
+                    "type": "boolean"
+                },
+                "anticipated": {
+                    "type": "boolean"
+                },
+                "bankSlipUrl": {
+                    "type": "string"
+                },
+                "billingType": {
+                    "type": "string"
+                },
+                "canBePaidAfterDueDate": {
+                    "type": "boolean"
+                },
+                "checkoutSession": {},
+                "clientPaymentDate": {
+                    "type": "string"
+                },
+                "confirmedDate": {
+                    "type": "string"
+                },
+                "creditDate": {
+                    "type": "string"
+                },
+                "customer": {
+                    "type": "string"
+                },
+                "dateCreated": {
+                    "type": "string"
+                },
+                "deleted": {
+                    "type": "boolean"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "discount": {},
+                "dueDate": {
+                    "type": "string"
+                },
+                "escrow": {},
+                "estimatedCreditDate": {
+                    "type": "string"
+                },
+                "externalReference": {
+                    "type": "string"
+                },
+                "fine": {},
+                "id": {
+                    "type": "string"
+                },
+                "installment": {
+                    "type": "string"
+                },
+                "installmentNumber": {
+                    "type": "integer"
+                },
+                "interest": {},
+                "interestValue": {},
+                "invoiceNumber": {
+                    "type": "string"
+                },
+                "invoiceUrl": {
+                    "type": "string"
+                },
+                "lastBankSlipViewedDate": {},
+                "lastInvoiceViewedDate": {},
+                "netValue": {
+                    "type": "number"
+                },
+                "nossoNumero": {
+                    "type": "string"
+                },
+                "object": {
+                    "type": "string"
+                },
+                "originalDueDate": {
+                    "type": "string"
+                },
+                "originalValue": {},
+                "paymentDate": {
+                    "type": "string"
+                },
+                "paymentLink": {
+                    "description": "duplicated field name workaround",
+                    "type": "string"
+                },
+                "pixTransaction": {},
+                "postalService": {
+                    "type": "boolean"
+                },
+                "refunds": {},
+                "status": {
+                    "type": "string"
+                },
+                "transactionReceiptUrl": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "number"
+                }
+            }
+        },
+        "model.AsaasPaymentsListResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.AsaasPaymentResponse"
+                    }
+                },
+                "hasMore": {
+                    "type": "boolean"
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "object": {
+                    "description": "\"list\"",
+                    "type": "string"
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "totalCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.AsaasPersonType": {
+            "type": "string",
+            "enum": [
+                "JURIDICA",
+                "FISICA"
+            ],
+            "x-enum-varnames": [
+                "AsaasPersonTypeJuridica",
+                "AsaasPersonTypeFisica"
+            ]
+        },
+        "model.AsaasUpdateCustomerRequest": {
+            "type": "object",
+            "properties": {
+                "additionalEmails": {
+                    "description": "Metadados",
+                    "type": "string"
+                },
+                "address": {
+                    "description": "Endereço",
+                    "type": "string"
+                },
+                "addressNumber": {
+                    "type": "string"
+                },
+                "city": {
+                    "type": "integer"
+                },
+                "company": {
+                    "type": "boolean"
+                },
+                "complement": {
+                    "type": "string"
+                },
+                "country": {
+                    "type": "string"
+                },
+                "cpfCnpj": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "externalReference": {
+                    "type": "string"
+                },
+                "foreignCustomer": {
+                    "type": "boolean"
+                },
+                "mobilePhone": {
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Identificação",
+                    "type": "string"
+                },
+                "notificationDisabled": {
+                    "description": "Use pointers for booleans so \"omit vs false\" is preserved.",
+                    "type": "boolean"
+                },
+                "observations": {
+                    "type": "string"
+                },
+                "personType": {
+                    "description": "Flags / enums",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.AsaasPersonType"
+                        }
+                    ]
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "postalCode": {
+                    "type": "string"
+                },
+                "province": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.AsaasWebhookAccount": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "ownerId": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.AsaasWebhookEvent": {
+            "type": "object",
+            "properties": {
+                "account": {
+                    "$ref": "#/definitions/model.AsaasWebhookAccount"
+                },
+                "dateCreated": {
+                    "description": "Format: \"2026-01-24 16:13:02\"",
+                    "type": "string"
+                },
+                "event": {
+                    "description": "e.g., PAYMENT_CREATED, PAYMENT_RECEIVED, PAYMENT_UPDATED, etc.",
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "payment": {
+                    "description": "The payment object (when event is payment-related)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.AsaasPaymentResponse"
+                        }
+                    ]
+                }
+            }
+        }
+    }
+}
