@@ -408,6 +408,73 @@ const docTemplate = `{
             }
         },
         "/v1/asaas/charges/{id}": {
+            "put": {
+                "description": "Atualiza uma cobrança (payment) no Asaas. Somente é possível atualizar cobranças aguardando pagamento ou vencidas. Uma vez criada, não é possível alterar o cliente ao qual a cobrança pertence. Para atualizar split após confirmação, existem regras específicas (ver documentação Asaas).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "asaas"
+                ],
+                "summary": "Atualizar cobrança existente no Asaas",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID da cobrança no Asaas (payment_id)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID do accounting_office (UUID)",
+                        "name": "accounting_office_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "description": "Payload da atualização",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.AsaasUpdateChargeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.AsaasPaymentResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
             "delete": {
                 "description": "Exclui uma cobrança (payment) do Asaas e remove do banco de dados iam.charges",
                 "consumes": [
@@ -417,7 +484,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Asaas Charges"
+                    "asaas"
                 ],
                 "summary": "Excluir cobrança do Asaas",
                 "parameters": [
@@ -978,6 +1045,26 @@ const docTemplate = `{
                 }
             }
         },
+        "model.AsaasChargeSplit": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "externalReference": {
+                    "type": "string"
+                },
+                "fixedValue": {
+                    "type": "number"
+                },
+                "percentualValue": {
+                    "type": "number"
+                },
+                "walletId": {
+                    "type": "string"
+                }
+            }
+        },
         "model.AsaasCreateChargeRequest": {
             "type": "object",
             "properties": {
@@ -1296,6 +1383,59 @@ const docTemplate = `{
                 "AsaasPersonTypeJuridica",
                 "AsaasPersonTypeFisica"
             ]
+        },
+        "model.AsaasUpdateChargeRequest": {
+            "type": "object",
+            "properties": {
+                "billingType": {
+                    "description": "BOLETO | CREDIT_CARD | PIX | UNDEFINED",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.AsaasBillingType"
+                        }
+                    ]
+                },
+                "callback": {
+                    "description": "Callback controls automatic redirect behavior after payment (commonly used for payment links).\nAsaas docs show this object as a free-form payload; we keep it flexible to avoid breaking changes.",
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "daysAfterDueDateToRegistrationCancellation": {
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "discount": {
+                    "$ref": "#/definitions/model.AsaasChargeDiscount"
+                },
+                "dueDate": {
+                    "description": "YYYY-MM-DD",
+                    "type": "string"
+                },
+                "externalReference": {
+                    "type": "string"
+                },
+                "fine": {
+                    "$ref": "#/definitions/model.AsaasChargeFine"
+                },
+                "interest": {
+                    "$ref": "#/definitions/model.AsaasChargeInterest"
+                },
+                "postalService": {
+                    "type": "boolean"
+                },
+                "split": {
+                    "description": "Split is allowed for credit/debit card charges up to 1 business day before expected payment date.\nCan only update CONFIRMED status charges without anticipation.\nException: split divergence block allows updating even RECEIVED/anticipated charges (split field only).",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.AsaasChargeSplit"
+                    }
+                },
+                "value": {
+                    "type": "number"
+                }
+            }
         },
         "model.AsaasUpdateCustomerRequest": {
             "type": "object",

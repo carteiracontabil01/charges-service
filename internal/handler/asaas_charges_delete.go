@@ -15,7 +15,7 @@ import (
 // DeleteAsaasCharge godoc
 // @Summary Excluir cobrança do Asaas
 // @Description Exclui uma cobrança (payment) do Asaas e remove do banco de dados iam.charges
-// @Tags Asaas Charges
+// @Tags asaas
 // @Accept json
 // @Produce json
 // @Param id path string true "ID da cobrança no Asaas (pay_xxx)"

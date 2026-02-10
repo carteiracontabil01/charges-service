@@ -1,0 +1,38 @@
+# Git
+.git
+.gitignore
+.github
+
+# Documentation
+*.md
+docs/
+
+# Development files
+.env
+.env.*
+env.example
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Test files
+*_test.go
+testdata/
+
+# Build artifacts
+bin/
+dist/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Makefile (not needed in image)
+Makefile

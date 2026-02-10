@@ -33,6 +33,7 @@ func RegisterRoutes(r *chi.Mux, cfg config.Config) {
 	r.Post("/v1/asaas/customers", handler.CreateAsaasCustomer)
 	r.Post("/v1/asaas/charges", handler.CreateAsaasCharge)
 	r.Get("/v1/asaas/charges", handler.ListAsaasCharges)
+	r.Put("/v1/asaas/charges/{id}", handler.UpdateAsaasCharge)
 	r.Delete("/v1/asaas/charges/{id}", handler.DeleteAsaasCharge)
 	r.Get("/v1/asaas/charges/{id}/digitable-line", handler.GetAsaasChargeDigitableLine)
 	r.Get("/v1/asaas/charges/{id}/pix-qrcode", handler.GetAsaasChargePixQrCode)
