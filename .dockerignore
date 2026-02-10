@@ -5,7 +5,8 @@
 
 # Documentation
 *.md
-docs/
+# NOTE: do NOT ignore /docs because cmd/api imports the generated swagger package (docs/docs.go)
+# docs/
 
 # Development files
 .env
