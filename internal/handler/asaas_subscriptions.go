@@ -238,49 +238,10 @@ func CreateAsaasSubscription(w http.ResponseWriter, r *http.Request) {
 		if subID != "" {
 			subIDPtr := subID
 
-			// Persist header row (provider_charge_id = subscription id)
-			headerDesc := req.Description
-			bt := string(req.BillingType)
-			var btPtr *string
-			if strings.TrimSpace(bt) != "" {
-				tmp := strings.TrimSpace(bt)
-				btPtr = &tmp
-			}
-			st := strings.TrimSpace(created.Status)
-			var stPtr *string
-			if st != "" {
-				stPtr = &st
-			}
-			eref := strings.TrimSpace(func() string {
-				if req.ExternalReference == nil {
-					return ""
-				}
-				return *req.ExternalReference
-			}())
-			var erefPtr *string
-			if eref != "" {
-				erefPtr = &eref
-			}
-
-			headerRow := model.IamChargeRow{
-				TenantID:              contract.TenantID,
-				AccountingOfficeID:    contract.AccountingOfficeID,
-				CompanyID:             contract.CompanyID,
-				ContractID:            contract.ID,
-				Provider:              "ASAAS",
-				ProviderChargeID:      subID,
-				ProviderSubscriptionID: &subIDPtr,
-				Value:                 req.Value,
-				Description:           headerDesc,
-				BillingType:           btPtr,
-				Status:                stPtr,
-				DueDate:               &req.NextDueDate,
-				ExternalReference:     erefPtr,
-				ProviderPayload:       body,
-			}
-			_ = supabase.UpsertCharges([]model.IamChargeRow{headerRow})
-
-			// List payments for this subscription and upsert them with provider_subscription_id set,
+			// List payments for this subscription and upsert them with provider_subscription_id set.
+			// IMPORTANT:
+			// - We do NOT persist a "header row" for the subscription itself in iam.charges to avoid duplicates in the Charges UI.
+			// - We persist only actual payments (pay_...) and link them to the subscription via provider_subscription_id.
 			// so the webhook can update them later (it requires existing rows to infer tenant/company context).
 			params := url.Values{}
 			params.Set("customer", asaasCustomerID)
@@ -291,6 +252,12 @@ func CreateAsaasSubscription(w http.ResponseWriter, r *http.Request) {
 			listStatus, listBody, listErr := client.ListPayments(params)
 			if listErr != nil || listStatus < 200 || listStatus >= 300 {
 				// fallback: try by externalReference (when Asaas doesn't support subscription filter)
+				eref := strings.TrimSpace(func() string {
+					if req.ExternalReference == nil {
+						return ""
+					}
+					return *req.ExternalReference
+				}())
 				if eref != "" {
 					params2 := url.Values{}
 					params2.Set("customer", asaasCustomerID)
