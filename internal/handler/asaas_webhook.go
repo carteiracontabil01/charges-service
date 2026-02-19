@@ -149,6 +149,7 @@ func updateChargeFromWebhook(event model.AsaasWebhookEvent) error {
 	charge.ContractID = existingCharge.ContractID
 	charge.InstallmentNumber = existingCharge.InstallmentNumber
 	charge.ProviderInstallmentID = existingCharge.ProviderInstallmentID
+	charge.ProviderSubscriptionID = existingCharge.ProviderSubscriptionID
 
 	// Upsert the charge
 	log.Printf("💾 [updateCharge] Executando upsert no banco de dados...")

@@ -12,6 +12,7 @@ type IamChargeRow struct {
 	Provider              string  `json:"provider"`
 	ProviderChargeID      string  `json:"provider_charge_id"`
 	ProviderInstallmentID *string `json:"provider_installment_id,omitempty"`
+	ProviderSubscriptionID *string `json:"provider_subscription_id,omitempty"`
 
 	InstallmentNumber *int32   `json:"installment_number,omitempty"`
 	Value             float64  `json:"value"`

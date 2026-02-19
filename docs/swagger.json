@@ -967,6 +967,68 @@
                     }
                 }
             }
+        },
+        "/v1/asaas/subscriptions": {
+            "post": {
+                "description": "Cria uma assinatura (subscription) no Asaas para um contrato. O serviço resolve a integração ativa a partir do contrato (billing_integration_id / provider_environment) e resolve o customer_id via mapeamento em company.asaas_integration (RPC em public). Se não existir, auto-cria o customer com dados da empresa e persiste o mapping.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "asaas"
+                ],
+                "summary": "Criar assinatura (subscription) no Asaas",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID do contrato (UUID)",
+                        "name": "contract_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "description": "Payload da assinatura",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.AsaasCreateSubscriptionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.AsaasSubscriptionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -1130,6 +1192,52 @@
                 },
                 "notificationDisabled": {
                     "type": "boolean"
+                }
+            }
+        },
+        "model.AsaasCreateSubscriptionRequest": {
+            "type": "object",
+            "properties": {
+                "billingType": {
+                    "description": "BOLETO | CREDIT_CARD | PIX | UNDEFINED",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.AsaasBillingType"
+                        }
+                    ]
+                },
+                "cycle": {
+                    "description": "WEEKLY | BIWEEKLY | MONTHLY | BIMONTHLY | QUARTERLY | SEMIANNUALLY | YEARLY",
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "discount": {
+                    "$ref": "#/definitions/model.AsaasSubscriptionDiscount"
+                },
+                "endDate": {
+                    "description": "YYYY-MM-DD",
+                    "type": "string"
+                },
+                "externalReference": {
+                    "type": "string"
+                },
+                "fine": {
+                    "$ref": "#/definitions/model.AsaasSubscriptionFine"
+                },
+                "interest": {
+                    "$ref": "#/definitions/model.AsaasSubscriptionInterest"
+                },
+                "maxPayments": {
+                    "type": "integer"
+                },
+                "nextDueDate": {
+                    "description": "YYYY-MM-DD",
+                    "type": "string"
+                },
+                "value": {
+                    "type": "number"
                 }
             }
         },
@@ -1377,6 +1485,99 @@
                 "AsaasPersonTypeJuridica",
                 "AsaasPersonTypeFisica"
             ]
+        },
+        "model.AsaasSubscriptionDiscount": {
+            "type": "object",
+            "properties": {
+                "dueDateLimitDays": {
+                    "type": "integer"
+                },
+                "type": {
+                    "description": "FIXED | PERCENTAGE",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.AsaasDiscountType"
+                        }
+                    ]
+                },
+                "value": {
+                    "type": "number"
+                }
+            }
+        },
+        "model.AsaasSubscriptionFine": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "description": "FIXED | PERCENTAGE",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.AsaasFineType"
+                        }
+                    ]
+                },
+                "value": {
+                    "type": "number"
+                }
+            }
+        },
+        "model.AsaasSubscriptionInterest": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "number"
+                }
+            }
+        },
+        "model.AsaasSubscriptionResponse": {
+            "type": "object",
+            "properties": {
+                "billingType": {
+                    "type": "string"
+                },
+                "customer": {
+                    "type": "string"
+                },
+                "cycle": {
+                    "type": "string"
+                },
+                "dateCreated": {
+                    "type": "string"
+                },
+                "deleted": {
+                    "type": "boolean"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "discount": {},
+                "endDate": {
+                    "type": "string"
+                },
+                "externalReference": {
+                    "type": "string"
+                },
+                "fine": {},
+                "id": {
+                    "type": "string"
+                },
+                "interest": {},
+                "maxPayments": {
+                    "type": "integer"
+                },
+                "nextDueDate": {
+                    "type": "string"
+                },
+                "object": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "number"
+                }
+            }
         },
         "model.AsaasUpdateChargeRequest": {
             "type": "object",

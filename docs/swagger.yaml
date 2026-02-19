@@ -105,6 +105,37 @@ definitions:
       notificationDisabled:
         type: boolean
     type: object
+  model.AsaasCreateSubscriptionRequest:
+    properties:
+      billingType:
+        allOf:
+        - $ref: '#/definitions/model.AsaasBillingType'
+        description: BOLETO | CREDIT_CARD | PIX | UNDEFINED
+      cycle:
+        description: WEEKLY | BIWEEKLY | MONTHLY | BIMONTHLY | QUARTERLY | SEMIANNUALLY
+          | YEARLY
+        type: string
+      description:
+        type: string
+      discount:
+        $ref: '#/definitions/model.AsaasSubscriptionDiscount'
+      endDate:
+        description: YYYY-MM-DD
+        type: string
+      externalReference:
+        type: string
+      fine:
+        $ref: '#/definitions/model.AsaasSubscriptionFine'
+      interest:
+        $ref: '#/definitions/model.AsaasSubscriptionInterest'
+      maxPayments:
+        type: integer
+      nextDueDate:
+        description: YYYY-MM-DD
+        type: string
+      value:
+        type: number
+    type: object
   model.AsaasCustomerResponse:
     properties:
       additionalEmails:
@@ -274,6 +305,65 @@ definitions:
     x-enum-varnames:
     - AsaasPersonTypeJuridica
     - AsaasPersonTypeFisica
+  model.AsaasSubscriptionDiscount:
+    properties:
+      dueDateLimitDays:
+        type: integer
+      type:
+        allOf:
+        - $ref: '#/definitions/model.AsaasDiscountType'
+        description: FIXED | PERCENTAGE
+      value:
+        type: number
+    type: object
+  model.AsaasSubscriptionFine:
+    properties:
+      type:
+        allOf:
+        - $ref: '#/definitions/model.AsaasFineType'
+        description: FIXED | PERCENTAGE
+      value:
+        type: number
+    type: object
+  model.AsaasSubscriptionInterest:
+    properties:
+      value:
+        type: number
+    type: object
+  model.AsaasSubscriptionResponse:
+    properties:
+      billingType:
+        type: string
+      customer:
+        type: string
+      cycle:
+        type: string
+      dateCreated:
+        type: string
+      deleted:
+        type: boolean
+      description:
+        type: string
+      discount: {}
+      endDate:
+        type: string
+      externalReference:
+        type: string
+      fine: {}
+      id:
+        type: string
+      interest: {}
+      maxPayments:
+        type: integer
+      nextDueDate:
+        type: string
+      object:
+        type: string
+      status:
+        type: string
+      value:
+        type: number
+    type: object
   model.AsaasUpdateChargeRequest:
     properties:
       billingType:
@@ -1076,6 +1166,52 @@ paths:
             additionalProperties: true
             type: object
       summary: Atualizar cliente existente no Asaas por company_id (mapeamento interno)
+      tags:
+      - asaas
+  /v1/asaas/subscriptions:
+    post:
+      consumes:
+      - application/json
+      description: Cria uma assinatura (subscription) no Asaas para um contrato. O
+        serviço resolve a integração ativa a partir do contrato (billing_integration_id
+        / provider_environment) e resolve o customer_id via mapeamento em company.asaas_integration
+        (RPC em public). Se não existir, auto-cria o customer com dados da empresa
+        e persiste o mapping.
+      parameters:
+      - description: ID do contrato (UUID)
+        in: query
+        name: contract_id
+        required: true
+        type: string
+      - description: Payload da assinatura
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.AsaasCreateSubscriptionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.AsaasSubscriptionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "502":
+          description: Bad Gateway
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Criar assinatura (subscription) no Asaas
       tags:
       - asaas
 swagger: "2.0"
