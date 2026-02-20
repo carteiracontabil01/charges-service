@@ -41,8 +41,16 @@ func UpdateAsaasCharge(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req model.AsaasUpdateChargeRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid json body"})
+		return
+	}
+
+	// Validate: at least one field must be provided
+	if req.Value == nil && req.DueDate == nil && req.Discount == nil && req.Interest == nil && req.Fine == nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "no updatable fields provided"})
 		return
 	}
 
@@ -160,6 +168,9 @@ func UpdateAsaasCharge(w http.ResponseWriter, r *http.Request) {
 					ContractID:         charge.ContractID,
 					Provider:           "ASAAS",
 					ProviderChargeID:   updated.ID,
+					ProviderInstallmentID:  charge.ProviderInstallmentID,
+					ProviderSubscriptionID: charge.ProviderSubscriptionID,
+					InstallmentNumber:      charge.InstallmentNumber,
 					Value:              updated.Value,
 					NetValue:           netPtr,
 					Description:        descPtr,
@@ -192,17 +203,8 @@ func UpdateAsaasCharge(w http.ResponseWriter, r *http.Request) {
 func mapUpdatePaymentRequest(req model.AsaasUpdateChargeRequest) asaas.UpdatePaymentRequest {
 	out := asaas.UpdatePaymentRequest{}
 
-	if req.BillingType != nil {
-		bt := string(*req.BillingType)
-		out.BillingType = &bt
-	}
 	out.Value = req.Value
 	out.DueDate = req.DueDate
-	out.Description = req.Description
-	out.DaysAfterDueDateToRegistrationCancellation = req.DaysAfterDueDateToRegistrationCancellation
-	out.ExternalReference = req.ExternalReference
-	out.PostalService = req.PostalService
-	out.Callback = req.Callback
 
 	if req.Discount != nil {
 		var t *string
@@ -226,20 +228,6 @@ func mapUpdatePaymentRequest(req model.AsaasUpdateChargeRequest) asaas.UpdatePay
 			t = &s
 		}
 		out.Fine = &asaas.PaymentFine{Value: req.Fine.Value, Type: t}
-	}
-
-	if len(req.Split) > 0 {
-		splits := make([]asaas.PaymentSplit, 0, len(req.Split))
-		for _, s := range req.Split {
-			splits = append(splits, asaas.PaymentSplit{
-				WalletID:         s.WalletID,
-				FixedValue:       s.FixedValue,
-				PercentualValue:  s.PercentualValue,
-				ExternalReference: s.ExternalReference,
-				Description:      s.Description,
-			})
-		}
-		out.Split = splits
 	}
 
 	return out

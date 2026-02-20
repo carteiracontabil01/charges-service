@@ -1107,26 +1107,6 @@ const docTemplate = `{
                 }
             }
         },
-        "model.AsaasChargeSplit": {
-            "type": "object",
-            "properties": {
-                "description": {
-                    "type": "string"
-                },
-                "externalReference": {
-                    "type": "string"
-                },
-                "fixedValue": {
-                    "type": "number"
-                },
-                "percentualValue": {
-                    "type": "number"
-                },
-                "walletId": {
-                    "type": "string"
-                }
-            }
-        },
         "model.AsaasCreateChargeRequest": {
             "type": "object",
             "properties": {
@@ -1588,25 +1568,6 @@ const docTemplate = `{
         "model.AsaasUpdateChargeRequest": {
             "type": "object",
             "properties": {
-                "billingType": {
-                    "description": "BOLETO | CREDIT_CARD | PIX | UNDEFINED",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/model.AsaasBillingType"
-                        }
-                    ]
-                },
-                "callback": {
-                    "description": "Callback controls automatic redirect behavior after payment (commonly used for payment links).\nAsaas docs show this object as a free-form payload; we keep it flexible to avoid breaking changes.",
-                    "type": "object",
-                    "additionalProperties": {}
-                },
-                "daysAfterDueDateToRegistrationCancellation": {
-                    "type": "integer"
-                },
-                "description": {
-                    "type": "string"
-                },
                 "discount": {
                     "$ref": "#/definitions/model.AsaasChargeDiscount"
                 },
@@ -1614,24 +1575,11 @@ const docTemplate = `{
                     "description": "YYYY-MM-DD",
                     "type": "string"
                 },
-                "externalReference": {
-                    "type": "string"
-                },
                 "fine": {
                     "$ref": "#/definitions/model.AsaasChargeFine"
                 },
                 "interest": {
                     "$ref": "#/definitions/model.AsaasChargeInterest"
-                },
-                "postalService": {
-                    "type": "boolean"
-                },
-                "split": {
-                    "description": "Split is allowed for credit/debit card charges up to 1 business day before expected payment date.\nCan only update CONFIRMED status charges without anticipation.\nException: split divergence block allows updating even RECEIVED/anticipated charges (split field only).",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.AsaasChargeSplit"
-                    }
                 },
                 "value": {
                     "type": "number"

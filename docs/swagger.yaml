@@ -44,19 +44,6 @@ definitions:
       value:
         type: number
     type: object
-  model.AsaasChargeSplit:
-    properties:
-      description:
-        type: string
-      externalReference:
-        type: string
-      fixedValue:
-        type: number
-      percentualValue:
-        type: number
-      walletId:
-        type: string
-    type: object
   model.AsaasCreateChargeRequest:
     properties:
       billingType:
@@ -366,41 +353,15 @@ definitions:
     type: object
   model.AsaasUpdateChargeRequest:
     properties:
-      billingType:
-        allOf:
-        - $ref: '#/definitions/model.AsaasBillingType'
-        description: BOLETO | CREDIT_CARD | PIX | UNDEFINED
-      callback:
-        additionalProperties: {}
-        description: |-
-          Callback controls automatic redirect behavior after payment (commonly used for payment links).
-          Asaas docs show this object as a free-form payload; we keep it flexible to avoid breaking changes.
-        type: object
-      daysAfterDueDateToRegistrationCancellation:
-        type: integer
-      description:
-        type: string
       discount:
         $ref: '#/definitions/model.AsaasChargeDiscount'
       dueDate:
         description: YYYY-MM-DD
         type: string
-      externalReference:
-        type: string
       fine:
         $ref: '#/definitions/model.AsaasChargeFine'
       interest:
         $ref: '#/definitions/model.AsaasChargeInterest'
-      postalService:
-        type: boolean
-      split:
-        description: |-
-          Split is allowed for credit/debit card charges up to 1 business day before expected payment date.
-          Can only update CONFIRMED status charges without anticipation.
-          Exception: split divergence block allows updating even RECEIVED/anticipated charges (split field only).
-        items:
-          $ref: '#/definitions/model.AsaasChargeSplit'
-        type: array
       value:
         type: number
     type: object
