@@ -55,6 +55,34 @@ func GetChargeByProviderID(provider, providerChargeID string) (*model.IamChargeR
 	return &charge, nil
 }
 
+// GetChargeByProviderIDAndOffice retrieves a charge from iam.charges by provider, provider_charge_id and accounting_office_id.
+// This avoids ambiguity across offices/tenants when the same provider_charge_id exists elsewhere.
+func GetChargeByProviderIDAndOffice(provider, providerChargeID, accountingOfficeID string) (*model.IamChargeRow, error) {
+	c := GetIAMClient()
+	if c == nil {
+		return nil, fmt.Errorf("supabase iam client não inicializado")
+	}
+
+	data, _, err := c.
+		From("charges").
+		Select("*", "", false).
+		Eq("provider", provider).
+		Eq("provider_charge_id", providerChargeID).
+		Eq("accounting_office_id", accountingOfficeID).
+		Single().
+		Execute()
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch charge: %w", err)
+	}
+
+	var charge model.IamChargeRow
+	if err := json.Unmarshal(data, &charge); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal charge: %w", err)
+	}
+
+	return &charge, nil
+}
+
 // DeleteChargeByProviderID deletes a charge from iam.charges by provider and provider_charge_id.
 func DeleteChargeByProviderID(provider, providerChargeID string) error {
 	c := GetIAMClient()

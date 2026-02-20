@@ -60,10 +60,67 @@ func UpdateAsaasCharge(w http.ResponseWriter, r *http.Request) {
 		)
 	}
 
-	// Get billing integration for the accounting office
-	cfg, err := supabase.GetBillingIntegrationForOffice(accountingOfficeID, normalizeProvider("ASAAS"))
+	// Resolve integration config:
+	// We should NOT guess by office/provider only, because an office may have multiple integrations
+	// and the contract explicitly selects one (billing_integration_id).
+	//
+	// Strategy:
+	// 1) Load charge (iam.charges) by payment_id + accounting_office_id
+	// 2) Load contract (iam.fee_contracts) by charge.contract_id
+	// 3) If contract has billing_integration_id, use it; else fallback to env/default like subscriptions handler
+	chargeRow, chErr := supabase.GetChargeByProviderIDAndOffice("ASAAS", paymentID, accountingOfficeID)
+	if chErr != nil || chargeRow == nil {
+		writeJSON(w, http.StatusNotFound, map[string]any{
+			"error":                "charge not found for office/provider",
+			"accounting_office_id": accountingOfficeID,
+			"provider":             "ASAAS",
+			"provider_charge_id":   paymentID,
+		})
+		return
+	}
+
+	contract, cErr := supabase.GetFeeContractByID(chargeRow.ContractID)
+	if cErr != nil {
+		writeJSON(w, http.StatusBadGateway, map[string]any{"error": "failed to load contract", "request_id": rid})
+		return
+	}
+	if contract == nil {
+		writeJSON(w, http.StatusNotFound, map[string]any{"error": "contract not found", "contract_id": chargeRow.ContractID})
+		return
+	}
+
+	provider := "ASAAS"
+	if contract.Provider != nil && strings.TrimSpace(*contract.Provider) != "" {
+		provider = normalizeProvider(*contract.Provider)
+	}
+
+	var cfg *model.BillingIntegrationRow
+	var err error
+	if contract.BillingIntegrationID != nil && strings.TrimSpace(*contract.BillingIntegrationID) != "" {
+		cfg, err = supabase.GetBillingIntegrationByID(strings.TrimSpace(*contract.BillingIntegrationID))
+	} else if contract.ProviderEnvironment != nil && strings.TrimSpace(*contract.ProviderEnvironment) != "" {
+		cfg, err = supabase.GetBillingIntegrationForOfficeAndEnvironment(contract.AccountingOfficeID, provider, strings.TrimSpace(*contract.ProviderEnvironment))
+		if err != nil {
+			cfg, err = supabase.GetBillingIntegrationForOffice(contract.AccountingOfficeID, provider)
+		}
+	} else {
+		cfg, err = supabase.GetBillingIntegrationForOffice(contract.AccountingOfficeID, provider)
+	}
+
 	if err != nil || cfg == nil {
-		writeJSON(w, http.StatusNotFound, map[string]any{"error": "billing integration not found for office/provider"})
+		writeJSON(w, http.StatusNotFound, map[string]any{
+			"error":                "billing integration not found for contract/office/provider",
+			"accounting_office_id": contract.AccountingOfficeID,
+			"provider":             provider,
+			"contract_id":          contract.ID,
+			"billing_integration_id": func() any {
+				if contract.BillingIntegrationID != nil {
+					return strings.TrimSpace(*contract.BillingIntegrationID)
+				}
+				return nil
+			}(),
+			"hint": "Garanta que o contrato tenha billing_integration_id válido e que exista registro ativo em iam.billing_integrations (is_active=true).",
+		})
 		return
 	}
 	if isDebugEnabled() {

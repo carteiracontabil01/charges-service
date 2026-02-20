@@ -35,7 +35,8 @@ func GetBillingIntegrationForOffice(accountingOfficeID string, provider string) 
 		From("billing_integrations").
 		Select("id, accounting_office_id, provider, environment, base_api, token, is_active, is_default, updated_at, created_at", "exact", false).
 		Eq("accounting_office_id", accountingOfficeID).
-		Eq("provider", provider).
+		// provider might be stored with different casing in DB; be case-insensitive here.
+		Ilike("provider", provider).
 		Eq("is_active", "true").
 		// Prefer default config first, then most recently updated
 		Order("is_default", &postgrest.OrderOpts{Ascending: false, NullsFirst: false}).
@@ -82,7 +83,8 @@ func GetBillingIntegrationForOfficeAndEnvironment(accountingOfficeID string, pro
 		From("billing_integrations").
 		Select("id, accounting_office_id, provider, environment, base_api, token, is_active, is_default, updated_at, created_at", "exact", false).
 		Eq("accounting_office_id", accountingOfficeID).
-		Eq("provider", provider).
+		// provider might be stored with different casing in DB; be case-insensitive here.
+		Ilike("provider", provider).
 		Eq("environment", environment).
 		Eq("is_active", "true").
 		// Prefer default config first, then most recently updated
