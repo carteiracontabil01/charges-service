@@ -414,6 +414,42 @@ definitions:
       state:
         type: string
     type: object
+  model.AsaasUpdateSubscriptionRequest:
+    properties:
+      billingType:
+        allOf:
+        - $ref: '#/definitions/model.AsaasBillingType'
+        description: BOLETO | CREDIT_CARD | PIX | UNDEFINED
+      cycle:
+        description: WEEKLY | BIWEEKLY | MONTHLY | BIMONTHLY | QUARTERLY | SEMIANNUALLY
+          | YEARLY
+        type: string
+      description:
+        type: string
+      discount:
+        $ref: '#/definitions/model.AsaasSubscriptionDiscount'
+      endDate:
+        description: YYYY-MM-DD
+        type: string
+      externalReference:
+        type: string
+      fine:
+        $ref: '#/definitions/model.AsaasSubscriptionFine'
+      interest:
+        $ref: '#/definitions/model.AsaasSubscriptionInterest'
+      nextDueDate:
+        description: YYYY-MM-DD — next installment due date
+        type: string
+      status:
+        description: ACTIVE | INACTIVE
+        type: string
+      updatePendingPayments:
+        description: When true, updates pending (unpaid) payments with the new billingType
+          and/or value.
+        type: boolean
+      value:
+        type: number
+    type: object
   model.AsaasWebhookAccount:
     properties:
       id:
@@ -1173,6 +1209,56 @@ paths:
             additionalProperties: true
             type: object
       summary: Criar assinatura (subscription) no Asaas
+      tags:
+      - asaas
+  /v1/asaas/subscriptions/{id}:
+    put:
+      consumes:
+      - application/json
+      description: Atualiza uma assinatura (subscription) no Asaas. O parâmetro nextDueDate
+        indica o vencimento da PRÓXIMA mensalidade a ser gerada (não altera a já existente).
+        Para atualizar mensalidades pendentes existentes com o novo valor/forma de
+        pagamento, passe updatePendingPayments=true.
+      parameters:
+      - description: ID da assinatura no Asaas (sub_...)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: ID do contrato (UUID) — usado para resolver a integração
+        in: query
+        name: contract_id
+        required: true
+        type: string
+      - description: Payload da atualização (todos os campos são opcionais)
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.AsaasUpdateSubscriptionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.AsaasSubscriptionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "502":
+          description: Bad Gateway
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Atualizar assinatura existente no Asaas
       tags:
       - asaas
 swagger: "2.0"

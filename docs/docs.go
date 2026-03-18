@@ -1035,6 +1035,75 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/v1/asaas/subscriptions/{id}": {
+            "put": {
+                "description": "Atualiza uma assinatura (subscription) no Asaas. O parâmetro nextDueDate indica o vencimento da PRÓXIMA mensalidade a ser gerada (não altera a já existente). Para atualizar mensalidades pendentes existentes com o novo valor/forma de pagamento, passe updatePendingPayments=true.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "asaas"
+                ],
+                "summary": "Atualizar assinatura existente no Asaas",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID da assinatura no Asaas (sub_...)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID do contrato (UUID) — usado para resolver a integração",
+                        "name": "contract_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "description": "Payload da atualização (todos os campos são opcionais)",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.AsaasUpdateSubscriptionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.AsaasSubscriptionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -1657,6 +1726,57 @@ const docTemplate = `{
                 },
                 "state": {
                     "type": "string"
+                }
+            }
+        },
+        "model.AsaasUpdateSubscriptionRequest": {
+            "type": "object",
+            "properties": {
+                "billingType": {
+                    "description": "BOLETO | CREDIT_CARD | PIX | UNDEFINED",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/model.AsaasBillingType"
+                        }
+                    ]
+                },
+                "cycle": {
+                    "description": "WEEKLY | BIWEEKLY | MONTHLY | BIMONTHLY | QUARTERLY | SEMIANNUALLY | YEARLY",
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "discount": {
+                    "$ref": "#/definitions/model.AsaasSubscriptionDiscount"
+                },
+                "endDate": {
+                    "description": "YYYY-MM-DD",
+                    "type": "string"
+                },
+                "externalReference": {
+                    "type": "string"
+                },
+                "fine": {
+                    "$ref": "#/definitions/model.AsaasSubscriptionFine"
+                },
+                "interest": {
+                    "$ref": "#/definitions/model.AsaasSubscriptionInterest"
+                },
+                "nextDueDate": {
+                    "description": "YYYY-MM-DD — next installment due date",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "ACTIVE | INACTIVE",
+                    "type": "string"
+                },
+                "updatePendingPayments": {
+                    "description": "When true, updates pending (unpaid) payments with the new billingType and/or value.",
+                    "type": "boolean"
+                },
+                "value": {
+                    "type": "number"
                 }
             }
         },

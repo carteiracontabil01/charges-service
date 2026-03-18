@@ -36,6 +36,30 @@ type AsaasCreateSubscriptionRequest struct {
 	Fine     *AsaasSubscriptionFine     `json:"fine,omitempty"`
 }
 
+// AsaasUpdateSubscriptionRequest is the payload for updating an existing subscription in Asaas.
+// https://docs.asaas.com/reference/atualizar-assinatura-existente
+// All fields are optional; only provided fields will be updated.
+// Note: nextDueDate sets the due date for the NEXT installment to be generated (not the current pending one).
+// Set updatePendingPayments=true to also update existing pending payments with new billingType/value.
+type AsaasUpdateSubscriptionRequest struct {
+	BillingType *AsaasBillingType `json:"billingType,omitempty"` // BOLETO | CREDIT_CARD | PIX | UNDEFINED
+	Status      *string           `json:"status,omitempty"`      // ACTIVE | INACTIVE
+	Value       *float64          `json:"value,omitempty"`
+	NextDueDate *string           `json:"nextDueDate,omitempty"` // YYYY-MM-DD — next installment due date
+	Cycle       *string           `json:"cycle,omitempty"`       // WEEKLY | BIWEEKLY | MONTHLY | BIMONTHLY | QUARTERLY | SEMIANNUALLY | YEARLY
+	Description *string           `json:"description,omitempty"`
+	EndDate     *string           `json:"endDate,omitempty"` // YYYY-MM-DD
+
+	// When true, updates pending (unpaid) payments with the new billingType and/or value.
+	UpdatePendingPayments *bool `json:"updatePendingPayments,omitempty"`
+
+	ExternalReference *string `json:"externalReference,omitempty"`
+
+	Discount *AsaasSubscriptionDiscount `json:"discount,omitempty"`
+	Interest *AsaasSubscriptionInterest `json:"interest,omitempty"`
+	Fine     *AsaasSubscriptionFine     `json:"fine,omitempty"`
+}
+
 // AsaasSubscriptionResponse is a partial representation of the subscription object returned by Asaas.
 // We use it mainly to extract id and show on logs/response; handlers pass-through raw JSON.
 type AsaasSubscriptionResponse struct {
