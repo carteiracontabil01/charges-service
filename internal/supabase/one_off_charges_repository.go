@@ -30,7 +30,10 @@ func SyncOneOffChargeFromProvider(providerChargeID, providerStatus, externalRefe
 		body["p_external_reference"] = ref
 	}
 
-	rawResp, err := RpcIAM("sync_one_off_charge_from_provider", body)
+	// NOTE: The function lives in the iam schema but is wrapped by a public alias
+	// (public.sync_one_off_charge_from_provider) so PostgREST can call it without
+	// needing extra schema exposure config.
+	rawResp, err := RpcPublic("sync_one_off_charge_from_provider", body)
 	if err != nil {
 		return fmt.Errorf("sync_one_off_charge_from_provider RPC failed (charge_id=%s): %w", providerChargeID, err)
 	}
