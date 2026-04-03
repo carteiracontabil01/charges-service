@@ -233,9 +233,26 @@ func UpdateAsaasCharge(w http.ResponseWriter, r *http.Request) {
 				isOneOff := charge.ProviderSubscriptionID == nil || strings.TrimSpace(*charge.ProviderSubscriptionID) == ""
 				if isOneOff {
 					eref := strings.TrimSpace(updated.ExternalReference)
-					log.Printf("[supabase] syncing one_off_charge after UPDATE: payment_id=%s status=%s external_reference=%q",
-						updated.ID, updated.Status, eref)
-					if syncErr := supabase.SyncOneOffChargeFromProvider(updated.ID, strings.TrimSpace(updated.Status), eref); syncErr != nil {
+
+					// Build optional extra fields from the Asaas response.
+					var syncExtra *supabase.OneOffSyncFields
+					if updated.Value > 0 || strings.TrimSpace(updated.DueDate) != "" || strings.TrimSpace(updated.BillingType) != "" {
+						syncExtra = &supabase.OneOffSyncFields{}
+						if updated.Value > 0 {
+							v := updated.Value
+							syncExtra.Value = &v
+						}
+						if d := strings.TrimSpace(updated.DueDate); d != "" {
+							syncExtra.DueDate = &d
+						}
+						if bt := strings.TrimSpace(updated.BillingType); bt != "" {
+							syncExtra.BillingType = &bt
+						}
+					}
+
+					log.Printf("[supabase] syncing one_off_charge after UPDATE: payment_id=%s status=%s external_reference=%q value=%v due=%s billing=%s",
+						updated.ID, updated.Status, eref, updated.Value, updated.DueDate, updated.BillingType)
+					if syncErr := supabase.SyncOneOffChargeFromProvider(updated.ID, strings.TrimSpace(updated.Status), eref, syncExtra); syncErr != nil {
 						log.Printf("[supabase] ERROR sync_one_off_charge failed after UPDATE: payment_id=%s err=%v", updated.ID, syncErr)
 						// Non-fatal: iam.charges is already updated; one-off sync is best-effort
 					} else {

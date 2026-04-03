@@ -383,14 +383,31 @@ func CreateAsaasCharge(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Sync iam.fee_contract_one_off_charges via RPC:
-		// Link provider_charge_id (first time) using external_reference.
+		// Link provider_charge_id (first time) and persist provider-side data using external_reference.
 		// Non-fatal: if the RPC fails we log but still return the Asaas payload to the caller.
 		if strings.TrimSpace(created.ID) != "" {
 			eref := strings.TrimSpace(created.ExternalReference)
 			paymentStatus := strings.TrimSpace(created.Status)
-			log.Printf("[supabase] syncing one_off_charge after CREATE: payment_id=%s status=%s external_reference=%q",
-				created.ID, paymentStatus, eref)
-			if syncErr := supabase.SyncOneOffChargeFromProvider(created.ID, paymentStatus, eref); syncErr != nil {
+
+			// Build optional extra fields from the Asaas response.
+			var syncExtra *supabase.OneOffSyncFields
+			if created.Value > 0 || strings.TrimSpace(created.DueDate) != "" || strings.TrimSpace(created.BillingType) != "" {
+				syncExtra = &supabase.OneOffSyncFields{}
+				if created.Value > 0 {
+					v := created.Value
+					syncExtra.Value = &v
+				}
+				if d := strings.TrimSpace(created.DueDate); d != "" {
+					syncExtra.DueDate = &d
+				}
+				if bt := strings.TrimSpace(created.BillingType); bt != "" {
+					syncExtra.BillingType = &bt
+				}
+			}
+
+			log.Printf("[supabase] syncing one_off_charge after CREATE: payment_id=%s status=%s external_reference=%q value=%v due=%s billing=%s",
+				created.ID, paymentStatus, eref, created.Value, created.DueDate, created.BillingType)
+			if syncErr := supabase.SyncOneOffChargeFromProvider(created.ID, paymentStatus, eref, syncExtra); syncErr != nil {
 				log.Printf("[supabase] ERROR sync_one_off_charge failed after CREATE: payment_id=%s err=%v", created.ID, syncErr)
 			} else {
 				log.Printf("[supabase] OK fee_contract_one_off_charges synced after CREATE: provider_charge_id=%s status=%s", created.ID, paymentStatus)
