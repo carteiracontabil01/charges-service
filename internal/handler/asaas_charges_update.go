@@ -224,23 +224,20 @@ func UpdateAsaasCharge(w http.ResponseWriter, r *http.Request) {
 						updated.ID, updated.Status, updated.DueDate, updated.Value)
 				}
 
-				// ── 2. Sync iam.fee_contract_one_off_charges (only for one-off charges) ──
-				// If provider_subscription_id is set, this is a subscription instalment —
-				// in that case we only update iam.charges (above), NOT the one-off table.
+				// ── 2. Sync iam.fee_contract_one_off_charges via RPC ───────────────
+				// For subscription instalments (provider_subscription_id is set) we only
+				// update iam.charges above; the one-off table is not touched.
+				// For one-off charges the RPC updates provider_status using provider_charge_id
+				// (already linked on first create). externalReference is passed as fallback
+				// so the RPC can recover if provider_charge_id was not yet set.
 				isOneOff := charge.ProviderSubscriptionID == nil || strings.TrimSpace(*charge.ProviderSubscriptionID) == ""
 				if isOneOff {
-					oneOffPayload := supabase.OneOffChargeUpdatePayload{
-						ProviderStatus: strPtr(updated.Status),
-						UpdatedAt:      now,
-					}
-
-					if oneOffErr := supabase.UpdateOneOffChargeByProviderChargeID(updated.ID, oneOffPayload); oneOffErr != nil {
-						if isDebugEnabled() {
-							log.Printf("[supabase] ERROR updating one_off_charge after update: payment_id=%s err=%v", updated.ID, oneOffErr)
-						}
-						// Non-fatal: iam.charges is already updated; the one-off sync is best-effort
+					eref := strings.TrimSpace(updated.ExternalReference)
+					if syncErr := supabase.SyncOneOffChargeFromProvider(updated.ID, strings.TrimSpace(updated.Status), eref); syncErr != nil {
+						log.Printf("[supabase] WARN sync_one_off_charge failed after update: payment_id=%s err=%v", updated.ID, syncErr)
+						// Non-fatal: iam.charges is already updated; one-off sync is best-effort
 					} else if isDebugEnabled() {
-						log.Printf("[supabase] fee_contract_one_off_charges updated: provider_charge_id=%s new_status=%s",
+						log.Printf("[supabase] fee_contract_one_off_charges synced via RPC: provider_charge_id=%s new_status=%s",
 							updated.ID, updated.Status)
 					}
 				}

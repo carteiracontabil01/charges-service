@@ -52,9 +52,8 @@ func mustNewClient(url, key, schema string) *supabase.Client {
 	return c
 }
 
-// RpcPublic calls a PostgREST RPC under schema public (Accept-Profile/Content-Profile).
-// This matches the pattern used in focus-integration-service and avoids depending on schema exposure.
-func RpcPublic(name string, body any) (string, error) {
+// rpcCall is the shared implementation for calling a PostgREST RPC endpoint.
+func rpcCall(name, schema string, body any) (string, error) {
 	if strings.TrimSpace(supabaseURL) == "" || strings.TrimSpace(supabaseKey) == "" {
 		return "", fmt.Errorf("supabase env não configurado (SUPABASE_URL/SUPABASE_KEY)")
 	}
@@ -77,8 +76,8 @@ func RpcPublic(name string, body any) (string, error) {
 		return "", fmt.Errorf("erro ao criar request RPC: %w", err)
 	}
 
-	req.Header.Set("Accept-Profile", "public")
-	req.Header.Set("Content-Profile", "public")
+	req.Header.Set("Accept-Profile", schema)
+	req.Header.Set("Content-Profile", schema)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("apikey", supabaseKey)
@@ -97,4 +96,14 @@ func RpcPublic(name string, body any) (string, error) {
 	}
 
 	return strings.TrimSpace(string(respBody)), nil
+}
+
+// RpcPublic calls a PostgREST RPC under the public schema.
+func RpcPublic(name string, body any) (string, error) {
+	return rpcCall(name, "public", body)
+}
+
+// RpcIAM calls a PostgREST RPC under the iam schema.
+func RpcIAM(name string, body any) (string, error) {
+	return rpcCall(name, "iam", body)
 }
