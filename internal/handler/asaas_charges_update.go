@@ -50,7 +50,7 @@ func UpdateAsaasCharge(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate: at least one field must be provided
-	if req.Value == nil && req.DueDate == nil && req.Discount == nil && req.Interest == nil && req.Fine == nil {
+	if req.BillingType == nil && req.Value == nil && req.DueDate == nil && req.Discount == nil && req.Interest == nil && req.Fine == nil {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "no updatable fields provided"})
 		return
 	}
@@ -273,6 +273,11 @@ func UpdateAsaasCharge(w http.ResponseWriter, r *http.Request) {
 func mapUpdatePaymentRequest(req model.AsaasUpdateChargeRequest) asaas.UpdatePaymentRequest {
 	out := asaas.UpdatePaymentRequest{}
 
+	// BillingType: AsaasBillingType → *string (Asaas client expects *string)
+	if req.BillingType != nil {
+		s := string(*req.BillingType)
+		out.BillingType = &s
+	}
 	out.Value = req.Value
 	out.DueDate = req.DueDate
 
