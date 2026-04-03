@@ -387,11 +387,13 @@ func CreateAsaasCharge(w http.ResponseWriter, r *http.Request) {
 		// Non-fatal: if the RPC fails we log but still return the Asaas payload to the caller.
 		if strings.TrimSpace(created.ID) != "" {
 			eref := strings.TrimSpace(created.ExternalReference)
-			status := strings.TrimSpace(created.Status)
-			if syncErr := supabase.SyncOneOffChargeFromProvider(created.ID, status, eref); syncErr != nil {
-				log.Printf("[supabase] WARN sync_one_off_charge failed after create: payment_id=%s err=%v", created.ID, syncErr)
-			} else if isDebugEnabled() {
-				log.Printf("[supabase] fee_contract_one_off_charges linked: provider_charge_id=%s status=%s", created.ID, status)
+			paymentStatus := strings.TrimSpace(created.Status)
+			log.Printf("[supabase] syncing one_off_charge after CREATE: payment_id=%s status=%s external_reference=%q",
+				created.ID, paymentStatus, eref)
+			if syncErr := supabase.SyncOneOffChargeFromProvider(created.ID, paymentStatus, eref); syncErr != nil {
+				log.Printf("[supabase] ERROR sync_one_off_charge failed after CREATE: payment_id=%s err=%v", created.ID, syncErr)
+			} else {
+				log.Printf("[supabase] OK fee_contract_one_off_charges synced after CREATE: provider_charge_id=%s status=%s", created.ID, paymentStatus)
 			}
 		}
 	}

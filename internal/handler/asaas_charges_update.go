@@ -233,11 +233,13 @@ func UpdateAsaasCharge(w http.ResponseWriter, r *http.Request) {
 				isOneOff := charge.ProviderSubscriptionID == nil || strings.TrimSpace(*charge.ProviderSubscriptionID) == ""
 				if isOneOff {
 					eref := strings.TrimSpace(updated.ExternalReference)
+					log.Printf("[supabase] syncing one_off_charge after UPDATE: payment_id=%s status=%s external_reference=%q",
+						updated.ID, updated.Status, eref)
 					if syncErr := supabase.SyncOneOffChargeFromProvider(updated.ID, strings.TrimSpace(updated.Status), eref); syncErr != nil {
-						log.Printf("[supabase] WARN sync_one_off_charge failed after update: payment_id=%s err=%v", updated.ID, syncErr)
+						log.Printf("[supabase] ERROR sync_one_off_charge failed after UPDATE: payment_id=%s err=%v", updated.ID, syncErr)
 						// Non-fatal: iam.charges is already updated; one-off sync is best-effort
-					} else if isDebugEnabled() {
-						log.Printf("[supabase] fee_contract_one_off_charges synced via RPC: provider_charge_id=%s new_status=%s",
+					} else {
+						log.Printf("[supabase] OK fee_contract_one_off_charges synced after UPDATE: provider_charge_id=%s new_status=%s",
 							updated.ID, updated.Status)
 					}
 				}
