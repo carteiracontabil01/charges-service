@@ -9,9 +9,9 @@ type IamChargeRow struct {
 	CompanyID          string `json:"company_id"`
 	ContractID         string `json:"contract_id"`
 
-	Provider              string  `json:"provider"`
-	ProviderChargeID      string  `json:"provider_charge_id"`
-	ProviderInstallmentID *string `json:"provider_installment_id,omitempty"`
+	Provider               string  `json:"provider"`
+	ProviderChargeID       string  `json:"provider_charge_id"`
+	ProviderInstallmentID  *string `json:"provider_installment_id,omitempty"`
 	ProviderSubscriptionID *string `json:"provider_subscription_id,omitempty"`
 
 	InstallmentNumber *int32   `json:"installment_number,omitempty"`
@@ -25,6 +25,8 @@ type IamChargeRow struct {
 	InvoiceURL        *string  `json:"invoice_url,omitempty"`
 	InvoiceNumber     *string  `json:"invoice_number,omitempty"`
 	ExternalReference *string  `json:"external_reference,omitempty"`
+
+	UpdatedAt *string `json:"updated_at,omitempty"` // ISO 8601 timestamp
 
 	ProviderPayload json.RawMessage `json:"provider_payload,omitempty"`
 }

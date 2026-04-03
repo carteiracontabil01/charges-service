@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/seuuser/charges-service/internal/integrations/asaas"
@@ -157,95 +158,91 @@ func UpdateAsaasCharge(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[asaas] update charge response: rid=%s status=%d body=%s", rid, status, raw)
 	}
 
-	// If 2xx, update the charge in our database (iam.charges)
+	// If 2xx, sync both iam.charges and (if one-off) iam.fee_contract_one_off_charges
 	if status >= 200 && status < 300 {
 		var updated model.AsaasPaymentResponse
 		if err := json.Unmarshal(body, &updated); err == nil && strings.TrimSpace(updated.ID) != "" {
 			// Find the existing charge in our database to get required IDs
-			charge, err := supabase.GetChargeByProviderID("ASAAS", updated.ID)
-			if err != nil {
+			charge, fetchErr := supabase.GetChargeByProviderID("ASAAS", updated.ID)
+			if fetchErr != nil {
 				if isDebugEnabled() {
-					log.Printf("[supabase] ERROR fetching charge for update: payment_id=%s err=%v", updated.ID, err)
+					log.Printf("[supabase] ERROR fetching charge for update: payment_id=%s err=%v", updated.ID, fetchErr)
 				}
 				// Non-fatal: we updated in Asaas but couldn't sync to our DB
 			} else if charge != nil {
-				// Update the charge record
-				desc := strings.TrimSpace(updated.Description)
-				var descPtr *string
-				if desc != "" {
-					descPtr = &desc
+				now := time.Now().UTC().Format(time.RFC3339)
+
+				// ── helpers: pointer from non-empty string ──────────────────
+				strPtr := func(s string) *string {
+					s = strings.TrimSpace(s)
+					if s == "" {
+						return nil
+					}
+					return &s
 				}
-				bt := strings.TrimSpace(updated.BillingType)
-				var btPtr *string
-				if bt != "" {
-					btPtr = &bt
-				}
-				st := strings.TrimSpace(updated.Status)
-				var stPtr *string
-				if st != "" {
-					stPtr = &st
-				}
-				due := strings.TrimSpace(updated.DueDate)
-				var duePtr *string
-				if due != "" {
-					duePtr = &due
-				}
-				odue := strings.TrimSpace(updated.OriginalDueDate)
-				var oduePtr *string
-				if odue != "" {
-					oduePtr = &odue
-				}
-				iurl := strings.TrimSpace(updated.InvoiceURL)
-				var iurlPtr *string
-				if iurl != "" {
-					iurlPtr = &iurl
-				}
-				inum := strings.TrimSpace(updated.InvoiceNumber)
-				var inumPtr *string
-				if inum != "" {
-					inumPtr = &inum
-				}
-				eref := strings.TrimSpace(updated.ExternalReference)
-				var erefPtr *string
-				if eref != "" {
-					erefPtr = &eref
-				}
+
 				var netPtr *float64
 				if updated.NetValue != 0 {
 					v := updated.NetValue
 					netPtr = &v
 				}
 
-				payload, _ := json.Marshal(updated)
+				rawPayload, _ := json.Marshal(updated)
 
+				// ── 1. Upsert iam.charges ────────────────────────────────────
 				row := model.IamChargeRow{
-					TenantID:           charge.TenantID,
-					AccountingOfficeID: charge.AccountingOfficeID,
-					CompanyID:          charge.CompanyID,
-					ContractID:         charge.ContractID,
-					Provider:           "ASAAS",
-					ProviderChargeID:   updated.ID,
+					TenantID:               charge.TenantID,
+					AccountingOfficeID:     charge.AccountingOfficeID,
+					CompanyID:              charge.CompanyID,
+					ContractID:             charge.ContractID,
+					Provider:               "ASAAS",
+					ProviderChargeID:       updated.ID,
 					ProviderInstallmentID:  charge.ProviderInstallmentID,
 					ProviderSubscriptionID: charge.ProviderSubscriptionID,
 					InstallmentNumber:      charge.InstallmentNumber,
-					Value:              updated.Value,
-					NetValue:           netPtr,
-					Description:        descPtr,
-					BillingType:        btPtr,
-					Status:             stPtr,
-					DueDate:            duePtr,
-					OriginalDueDate:    oduePtr,
-					InvoiceURL:         iurlPtr,
-					InvoiceNumber:      inumPtr,
-					ExternalReference:  erefPtr,
-					ProviderPayload:    payload,
+					Value:                  updated.Value,
+					NetValue:               netPtr,
+					Description:            strPtr(updated.Description),
+					BillingType:            strPtr(updated.BillingType),
+					Status:                 strPtr(updated.Status),
+					DueDate:                strPtr(updated.DueDate),
+					OriginalDueDate:        strPtr(updated.OriginalDueDate),
+					InvoiceURL:             strPtr(updated.InvoiceURL),
+					InvoiceNumber:          strPtr(updated.InvoiceNumber),
+					ExternalReference:      strPtr(updated.ExternalReference),
+					UpdatedAt:              &now,
+					ProviderPayload:        rawPayload,
 				}
 
-				if err := supabase.UpsertCharges([]model.IamChargeRow{row}); err != nil {
+				if upsertErr := supabase.UpsertCharges([]model.IamChargeRow{row}); upsertErr != nil {
 					if isDebugEnabled() {
-						log.Printf("[supabase] ERROR upserting charge after update: payment_id=%s err=%v", updated.ID, err)
+						log.Printf("[supabase] ERROR upserting charge after update: payment_id=%s err=%v", updated.ID, upsertErr)
 					}
-					// Non-fatal: we updated in Asaas but couldn't sync to our DB
+					// Non-fatal
+				} else if isDebugEnabled() {
+					log.Printf("[supabase] iam.charges updated: payment_id=%s status=%s due=%s value=%.2f",
+						updated.ID, updated.Status, updated.DueDate, updated.Value)
+				}
+
+				// ── 2. Sync iam.fee_contract_one_off_charges (only for one-off charges) ──
+				// If provider_subscription_id is set, this is a subscription instalment —
+				// in that case we only update iam.charges (above), NOT the one-off table.
+				isOneOff := charge.ProviderSubscriptionID == nil || strings.TrimSpace(*charge.ProviderSubscriptionID) == ""
+				if isOneOff {
+					oneOffPayload := supabase.OneOffChargeUpdatePayload{
+						ProviderStatus: strPtr(updated.Status),
+						UpdatedAt:      now,
+					}
+
+					if oneOffErr := supabase.UpdateOneOffChargeByProviderChargeID(updated.ID, oneOffPayload); oneOffErr != nil {
+						if isDebugEnabled() {
+							log.Printf("[supabase] ERROR updating one_off_charge after update: payment_id=%s err=%v", updated.ID, oneOffErr)
+						}
+						// Non-fatal: iam.charges is already updated; the one-off sync is best-effort
+					} else if isDebugEnabled() {
+						log.Printf("[supabase] fee_contract_one_off_charges updated: provider_charge_id=%s new_status=%s",
+							updated.ID, updated.Status)
+					}
 				}
 			}
 		}
