@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -140,10 +141,109 @@ func UpdateAsaasSubscription(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[asaas] update subscription response: rid=%s status=%d body=%s", rid, status, raw)
 	}
 
+	// When updatePendingPayments=true and the update succeeded, re-sync the affected
+	// pending payments to iam.charges so the local mirror reflects the new value/billing type.
+	if status >= 200 && status < 300 &&
+		req.UpdatePendingPayments != nil && *req.UpdatePendingPayments {
+		syncSubscriptionChargesToIAM(rid, client, contract, subscriptionID)
+	}
+
 	// Pass-through Asaas payload
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_, _ = w.Write(body)
+}
+
+// syncSubscriptionChargesToIAM lists all PENDING payments for a subscription in Asaas
+// and upserts them into iam.charges to keep the local mirror in sync.
+// Non-fatal: errors are logged but do not affect the HTTP response already sent.
+func syncSubscriptionChargesToIAM(
+	rid string,
+	client *asaas.Client,
+	contract *model.FeeContractRow,
+	subscriptionID string,
+) {
+	listParams := url.Values{}
+	listParams.Set("subscription", subscriptionID)
+	listParams.Set("status", "PENDING")
+	listParams.Set("limit", "100")
+	listParams.Set("offset", "0")
+
+	listStatus, listBody, listErr := client.ListPayments(listParams)
+	if listErr != nil {
+		log.Printf("[asaas] syncSubscriptionChargesToIAM: ERROR listing payments: rid=%s sub=%s err=%v",
+			rid, subscriptionID, listErr)
+		return
+	}
+	if listStatus < 200 || listStatus >= 300 {
+		log.Printf("[asaas] syncSubscriptionChargesToIAM: non-2xx listing payments: rid=%s sub=%s status=%d",
+			rid, subscriptionID, listStatus)
+		return
+	}
+
+	var list model.AsaasPaymentsListResponse
+	if err := json.Unmarshal(listBody, &list); err != nil {
+		log.Printf("[asaas] syncSubscriptionChargesToIAM: ERROR unmarshalling payment list: rid=%s err=%v", rid, err)
+		return
+	}
+
+	subIDPtr := subscriptionID
+	rows := make([]model.IamChargeRow, 0, len(list.Data))
+
+	for _, p := range list.Data {
+		if strings.TrimSpace(p.ID) == "" {
+			continue
+		}
+
+		var netPtr *float64
+		if p.NetValue != 0 {
+			v := p.NetValue
+			netPtr = &v
+		}
+		toStrPtr := func(s string) *string {
+			if s == "" {
+				return nil
+			}
+			return &s
+		}
+		payload, _ := json.Marshal(p)
+
+		rows = append(rows, model.IamChargeRow{
+			TenantID:               contract.TenantID,
+			AccountingOfficeID:     contract.AccountingOfficeID,
+			CompanyID:              contract.CompanyID,
+			ContractID:             contract.ID,
+			Provider:               "ASAAS",
+			ProviderChargeID:       p.ID,
+			ProviderSubscriptionID: &subIDPtr,
+			Value:                  p.Value,
+			NetValue:               netPtr,
+			Description:            toStrPtr(p.Description),
+			BillingType:            toStrPtr(p.BillingType),
+			Status:                 toStrPtr(p.Status),
+			DueDate:                toStrPtr(p.DueDate),
+			OriginalDueDate:        toStrPtr(p.OriginalDueDate),
+			InvoiceURL:             toStrPtr(p.InvoiceURL),
+			InvoiceNumber:          toStrPtr(p.InvoiceNumber),
+			ExternalReference:      toStrPtr(p.ExternalReference),
+			ProviderPayload:        payload,
+		})
+	}
+
+	if len(rows) == 0 {
+		if isDebugEnabled() {
+			log.Printf("[asaas] syncSubscriptionChargesToIAM: no PENDING payments found for sub=%s", subscriptionID)
+		}
+		return
+	}
+
+	if err := supabase.UpsertCharges(rows); err != nil {
+		log.Printf("[asaas] syncSubscriptionChargesToIAM: ERROR upserting iam.charges: rid=%s sub=%s err=%v",
+			rid, subscriptionID, err)
+		return
+	}
+
+	log.Printf("[asaas] syncSubscriptionChargesToIAM: upserted %d charges for sub=%s", len(rows), subscriptionID)
 }
 
 func mapUpdateSubscriptionRequest(req model.AsaasUpdateSubscriptionRequest) asaas.UpdateSubscriptionRequest {
