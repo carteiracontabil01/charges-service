@@ -15,6 +15,7 @@ import (
 
 var iamClient *supabase.Client
 var companyClient *supabase.Client
+var logsClient *supabase.Client
 var supabaseURL string
 var supabaseKey string
 
@@ -24,6 +25,7 @@ func InitClient() {
 
 	iamClient = mustNewClient(supabaseURL, supabaseKey, "iam")
 	companyClient = mustNewClient(supabaseURL, supabaseKey, "company")
+	logsClient = mustNewClient(supabaseURL, supabaseKey, "logs")
 }
 
 func GetClient() *supabase.Client {
@@ -37,6 +39,10 @@ func GetIAMClient() *supabase.Client {
 
 func GetCompanyClient() *supabase.Client {
 	return companyClient
+}
+
+func GetLogsClient() *supabase.Client {
+	return logsClient
 }
 
 func mustNewClient(url, key, schema string) *supabase.Client {

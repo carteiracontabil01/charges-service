@@ -1,6 +1,7 @@
 package supabase
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -35,6 +36,52 @@ func GetFeeContractByID(contractID string) (*model.FeeContractRow, error) {
 		return nil, nil
 	}
 	return &rows[0], nil
+}
+
+// feeContractSubscriptionRow is used only internally to unmarshal the contract_id
+// from iam.fee_contract_subscriptions.
+type feeContractSubscriptionRow struct {
+	ContractID string `json:"contract_id"`
+}
+
+// GetFeeContractBySubscriptionProviderID finds the fee contract linked to a given
+// Asaas subscription ID (e.g. "sub_VXJBYgP2u0eO") by querying
+// iam.fee_contract_subscriptions.provider_subscription_id and then fetching
+// the parent iam.fee_contracts row.
+//
+// Returns (nil, nil) when no matching subscription/contract is found.
+func GetFeeContractBySubscriptionProviderID(providerSubID string) (*model.FeeContractRow, error) {
+	c := GetIAMClient()
+	if c == nil {
+		return nil, fmt.Errorf("supabase iam client não inicializado")
+	}
+	providerSubID = strings.TrimSpace(providerSubID)
+	if providerSubID == "" {
+		return nil, fmt.Errorf("provider_subscription_id is required")
+	}
+
+	// Step 1: resolve contract_id from fee_contract_subscriptions
+	data, _, err := c.
+		From("fee_contract_subscriptions").
+		Select("contract_id", "", false).
+		Eq("provider_subscription_id", providerSubID).
+		Limit(1, "").
+		Single().
+		Execute()
+	if err != nil {
+		return nil, fmt.Errorf("fee_contract_subscriptions lookup failed (sub=%s): %w", providerSubID, err)
+	}
+
+	var sub feeContractSubscriptionRow
+	if err := json.Unmarshal(data, &sub); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal fee_contract_subscriptions row: %w", err)
+	}
+	if strings.TrimSpace(sub.ContractID) == "" {
+		return nil, fmt.Errorf("contract_id is empty for provider_subscription_id=%s", providerSubID)
+	}
+
+	// Step 2: fetch the full contract row
+	return GetFeeContractByID(sub.ContractID)
 }
 
 func ListFeeContractServiceItems(contractID string) ([]model.FeeContractServiceItemRow, error) {

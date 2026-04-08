@@ -45,6 +45,7 @@ type AsaasPaymentResponse struct {
 	ID                string  `json:"id"`
 	DateCreated       string  `json:"dateCreated"`
 	Customer          string  `json:"customer"`
+	Subscription      string  `json:"subscription"`  // present when payment belongs to a subscription
 	Installment       string  `json:"installment"`
 	CheckoutSession   any     `json:"checkoutSession"`
 	PaymentLink       any     `json:"paymentLink"`
